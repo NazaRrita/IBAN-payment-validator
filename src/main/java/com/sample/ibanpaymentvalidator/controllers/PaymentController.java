@@ -13,7 +13,7 @@ import java.util.List;
 @RequestMapping
 public class PaymentController {
 
-    private final PaymentService paymentService;
+    private PaymentService paymentService;
 
     public PaymentController(PaymentService paymentService) {
         this.paymentService = paymentService;
@@ -41,8 +41,4 @@ public class PaymentController {
         return paymentService.createPaymentFromCsv(file, clientIp);
     }
 
-    @GetMapping("/test")
-    public String testEndpoint() {
-        return "Endpoint is working!";
-    }
 }

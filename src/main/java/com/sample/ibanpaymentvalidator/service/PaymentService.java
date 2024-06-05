@@ -21,7 +21,7 @@ import java.util.List;
 
 @Service
 public class PaymentService {
-    public PaymentRepository paymentRepository;
+    private PaymentRepository paymentRepository;
 
     public PaymentService(PaymentRepository paymentRepository) {
         this.paymentRepository = paymentRepository;
@@ -41,12 +41,14 @@ public class PaymentService {
     }
 
     private String ibanValidation(String debtorIban) {
-        if (IBANValidation.isValidIban(debtorIban)) {
+        String regex = "^(LV|LT|EE)$";
+        if (IBANValidation.isValidIban(debtorIban) && (debtorIban.substring(0, 2).matches(regex))) {
             return debtorIban;
         } else {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid IBAN");
         }
     }
+
 
     private BigDecimal isValidAmount(BigDecimal amount) {
         if (amount.compareTo(BigDecimal.ZERO) > 0) {
@@ -101,14 +103,14 @@ public class PaymentService {
         String ip = "";
         if (request != null) {
             ip = request.getHeader("X-Forwarded-For");
-            if (ip == null || "".equals(ip)) {
+            if (ip == null || ip.isEmpty()) {
                 ip = request.getRemoteAddr();
             }
         }
         return ip;
     }
 
-    public String getClientCountry(String ip) {
+    private String getClientCountry(String ip) {
         try {
             RestTemplate restTemplate = new RestTemplate();
             String response = restTemplate.getForObject("http://ip-api.com/json/" + ip, String.class);
