@@ -1,8 +1,12 @@
 package com.sample.ibanpaymentvalidator.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sample.ibanpaymentvalidator.domain.Payment;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import com.sample.ibanpaymentvalidator.repository.PaymentRepository;
@@ -23,18 +27,23 @@ public class PaymentService {
         this.paymentRepository = paymentRepository;
     }
 
-    public List <Payment> createPayment(Payment payment) {
-        List <Payment> createdPayments = new ArrayList<>();
+    public List<Payment> createPayment(Payment payment, String clientIp) {
+        List<Payment> createdPayments = new ArrayList<>();
         String iban = ibanValidation(payment.getDebtorIban());
         BigDecimal validatedAmount = isValidAmount(payment.getAmount());
-        Payment newPayment = paymentRepository.save(new Payment(iban, validatedAmount));
+        String country = getClientCountry(clientIp);
+        if (!isValidCountry(country)) {
+            payment.setCountry(country);
+        }
+        Payment newPayment = paymentRepository.save(new Payment(iban, validatedAmount, country));
         createdPayments.add(newPayment);
         return createdPayments;
     }
+
     private String ibanValidation(String debtorIban) {
         if (IBANValidation.isValidIban(debtorIban)) {
             return debtorIban;
-        }else{
+        } else {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid IBAN");
         }
     }
@@ -46,9 +55,10 @@ public class PaymentService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid amount");
         }
     }
-    public List<Payment> createPaymentFromCsv(MultipartFile file)  {
 
-        if(file.isEmpty()){
+    public List<Payment> createPaymentFromCsv(MultipartFile file, String clientIp) {
+
+        if (file.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File is empty");
         }
         List<Payment> createdPayments = new ArrayList<>();
@@ -58,7 +68,7 @@ public class PaymentService {
             boolean isFirstLine = true;
             while ((line = br.readLine()) != null) {
                 line = line.replace("\ufeff", "").replaceAll("\"", "");
-                if(isFirstLine){
+                if (isFirstLine) {
                     isFirstLine = false;
                     continue;
                 }
@@ -70,14 +80,15 @@ public class PaymentService {
                     Payment payment = new Payment();
                     payment.setDebtorIban(debtorIban);
                     payment.setAmount(new BigDecimal(amount));
-                    createdPayments.addAll(createPayment(payment));
+                    createdPayments.addAll(createPayment(payment, clientIp));
                 }
             }
-        }catch (IOException e){
+        } catch (IOException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error while reading file");
         }
         return createdPayments;
     }
+
     public List<Payment> getPayments() {
         return paymentRepository.findAll();
     }
@@ -85,4 +96,42 @@ public class PaymentService {
     public List<Payment> getPaymentsByDebtorIban(String debtorIban) {
         return paymentRepository.findByDebtorIban(debtorIban);
     }
+
+    public String getClientIp(HttpServletRequest request) {
+        String ip = "";
+        if (request != null) {
+            ip = request.getHeader("X-Forwarded-For");
+            if (ip == null || "".equals(ip)) {
+                ip = request.getRemoteAddr();
+            }
+        }
+        return ip;
+    }
+
+    public String getClientCountry(String ip) {
+        try {
+            RestTemplate restTemplate = new RestTemplate();
+            String response = restTemplate.getForObject("http://ip-api.com/json/" + ip, String.class);
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode node = mapper.readTree(response);
+            String country = node.path("country").asText();
+            if (country == null || country.isEmpty()) {
+                return null;
+            }
+            return country;
+        } catch (Exception e) {
+            return null;
+        }
+
+    }
+
+    private boolean isValidCountry(String country) {
+        if (country == null || country.isEmpty()) {
+            return false;
+        }
+        return (country.equalsIgnoreCase("Latvia")
+                || country.equalsIgnoreCase("Lithuania")
+                || country.equalsIgnoreCase("Estonia"));
+    }
+
 }

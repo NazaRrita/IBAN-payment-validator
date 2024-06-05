@@ -1,5 +1,6 @@
 package com.sample.ibanpaymentvalidator.domain;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.persistence.*;
 import org.springframework.data.annotation.Id;
 
@@ -9,6 +10,7 @@ import java.util.Objects;
 
 @Entity
 @Table(name = "payments")
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class Payment {
     @jakarta.persistence.Id
     @Id
@@ -20,11 +22,14 @@ public class Payment {
     private BigDecimal amount;
     @Column(name = "created_at")
     private LocalDateTime createdAt;
+    @Column(name = "country", nullable = true)
+    private String country;
 
-    public Payment(String debtorIban, BigDecimal amount) {
+    public Payment(String debtorIban, BigDecimal amount, String country) {
         this.debtorIban = debtorIban;
         this.amount = amount;
         this.createdAt = LocalDateTime.now();
+        this.country = country;
     }
 
     public Payment() {
@@ -61,6 +66,14 @@ public class Payment {
 
     public void setDebtorIban(String debtorIban) {
         this.debtorIban = debtorIban;
+    }
+
+    public String getCountry() {
+        return country;
+    }
+
+    public void setCountry(String country) {
+        this.country = country;
     }
 
     @Override
