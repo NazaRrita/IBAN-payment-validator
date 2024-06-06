@@ -29,7 +29,8 @@ public class PaymentService {
 
     public List<Payment> createPayment(Payment payment, String clientIp) {
         List<Payment> createdPayments = new ArrayList<>();
-        String iban = ibanValidation(payment.getDebtorIban());
+        String iban = payment.getDebtorIban();
+        IBANValidation.isValidIban(iban);
         BigDecimal validatedAmount = isValidAmount(payment.getAmount());
         String country = getClientCountry(clientIp);
         if (!isValidCountry(country)) {
@@ -39,16 +40,6 @@ public class PaymentService {
         createdPayments.add(newPayment);
         return createdPayments;
     }
-
-    private String ibanValidation(String debtorIban) {
-        String regex = "^(LV|LT|EE)$";
-        if (IBANValidation.isValidIban(debtorIban) && (debtorIban.substring(0, 2).matches(regex))) {
-            return debtorIban;
-        } else {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid IBAN");
-        }
-    }
-
 
     private BigDecimal isValidAmount(BigDecimal amount) {
         if (amount.compareTo(BigDecimal.ZERO) > 0) {

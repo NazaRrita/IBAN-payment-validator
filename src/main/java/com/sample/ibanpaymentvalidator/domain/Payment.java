@@ -2,21 +2,22 @@ package com.sample.ibanpaymentvalidator.domain;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.persistence.*;
-import org.springframework.data.annotation.Id;
+import org.hibernate.annotations.GenericGenerator;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.UUID;
 
 @Entity
 @Table(name = "payments")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class Payment {
-    @jakarta.persistence.Id
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
-    private Long id;
+    @GeneratedValue(generator = "UUID")
+    @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
+    @Column(name = "id", updatable = false, nullable = false)
+    private UUID id;
     @Column(name = "debtor_iban")
     private String debtorIban;
     private BigDecimal amount;
@@ -36,11 +37,11 @@ public class Payment {
 
     }
 
-    public void setId(Long id) {
+    public void setId(UUID id) {
         this.id = id;
     }
 
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 
