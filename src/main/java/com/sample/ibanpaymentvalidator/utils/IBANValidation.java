@@ -10,13 +10,13 @@ public class IBANValidation {
     private static final String countryRegex = "^(LV|LT|EE)$";
 
     public static void isValidIban(String iban) {
-        try{
+        try {
             IbanUtil.validate(iban);
             String countryCode = IbanUtil.getCountryCode(iban);
-            if(!countryCode.matches(countryRegex)){
+            if (!countryCode.matches(countryRegex)) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid country code");
             }
-        } catch (IbanFormatException | UnsupportedCountryException e){
+        } catch (IbanFormatException | UnsupportedCountryException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid IBAN");
         }
     }
