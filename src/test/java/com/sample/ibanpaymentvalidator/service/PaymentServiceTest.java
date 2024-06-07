@@ -8,6 +8,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
@@ -29,8 +31,8 @@ class PaymentServiceTest {
 
     @Test
     void shouldCreatePayment() {
-    Payment testPayment = new Payment("LT601010012345678901", BigDecimal.valueOf(200.00), "Lithuania");
-    String ip = "102.38.247.25";
+        Payment testPayment = new Payment("LT601010012345678901", BigDecimal.valueOf(200.00), "Lithuania");
+        String ip = "102.38.247.25";
 
         when(paymentRepository.save(any(Payment.class))).thenReturn(testPayment);
         List<Payment> createdPayments = paymentservice.createPayment(testPayment, ip);
@@ -54,11 +56,12 @@ class PaymentServiceTest {
         Assertions.assertEquals(400, exception.getStatusCode().value());
 
     }
+
     @Test
-    void shouldReturnPaymentsList(){
+    void shouldReturnPaymentsList() {
         Payment payment1 = new Payment("LV97HABA0012345678910", BigDecimal.valueOf(1000.00), "Latvia");
-        Payment payment2 = new Payment ("LT601010012345678901", BigDecimal.valueOf(200.00), "Lithuania");
-        Payment payment3 = new Payment ("EE471000001020145685", BigDecimal.valueOf(100.00), "Estonia");
+        Payment payment2 = new Payment("LT601010012345678901", BigDecimal.valueOf(200.00), "Lithuania");
+        Payment payment3 = new Payment("EE471000001020145685", BigDecimal.valueOf(100.00), "Estonia");
 
         when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(paymentRepository.findAll()).thenReturn(List.of(payment1, payment2, payment3));
@@ -74,10 +77,11 @@ class PaymentServiceTest {
         Assertions.assertEquals(BigDecimal.valueOf(200.00), payments.get(1).getAmount());
         Assertions.assertEquals("Estonia", payments.get(2).getCountry());
     }
+
     @Test
-    void shouldFindPaymentByDebtorIban(){
+    void shouldFindPaymentByDebtorIban() {
         Payment payment1 = new Payment("LV97HABA0012345678910", BigDecimal.valueOf(1000.00), "Latvia");
-        Payment payment2 = new Payment ("LT601010012345678901", BigDecimal.valueOf(200.00), "Lithuania");
+        Payment payment2 = new Payment("LT601010012345678901", BigDecimal.valueOf(200.00), "Lithuania");
         Payment payment3 = new Payment("LV97HABA0012345678910", BigDecimal.valueOf(105.00), "Latvia");
 
         when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -93,4 +97,44 @@ class PaymentServiceTest {
         foundPayments.forEach(payment ->
                 Assertions.assertEquals("LV97HABA0012345678910", payment.getDebtorIban()));
     }
+
+    @Test
+    void shouldCreatePaymentFromCsv() {
+        String csv = "amount,debtorIban\n15.0,LT356437978869712537";
+        MockMultipartFile file = new MockMultipartFile("file", "test.csv", "text/csv", csv.getBytes());
+        String ip = "85.206.12.124";
+        Payment payment = new Payment("LT356437978869712537", BigDecimal.valueOf(15.00), "Lithuania");
+
+        when(paymentRepository.save(any(Payment.class))).thenReturn(payment);
+        List<Payment> createdPayments = paymentservice.createPaymentFromCsv(file, ip);
+
+        Assertions.assertEquals(1, createdPayments.size());
+
+        Payment createdPayment = createdPayments.getFirst();
+        Assertions.assertEquals(payment.getDebtorIban(), createdPayment.getDebtorIban());
+        Assertions.assertEquals(payment.getAmount(), createdPayment.getAmount());
+        Assertions.assertEquals("Lithuania", createdPayment.getCountry());
+    }
+
+    @Test
+    void shouldValidateClientCountry() {
+        String country1 = null;
+        String country2 = "Lithuania";
+        String country3 = "";
+        String country4 = "Belgium";
+
+        Assertions.assertFalse(paymentservice.isValidCountry(country1));
+        Assertions.assertTrue(paymentservice.isValidCountry(country2));
+        Assertions.assertFalse(paymentservice.isValidCountry(country3));
+        Assertions.assertFalse(paymentservice.isValidCountry(country4));
+    }
+
+    @Test
+    void shouldGetClientIp() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("X-Forwarded-For", "102.38.247.25");
+        String ip = paymentservice.getClientIp(request);
+        Assertions.assertEquals("102.38.247.25", ip);
+    }
+
 }

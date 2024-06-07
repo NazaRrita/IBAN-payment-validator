@@ -129,7 +129,7 @@ public class PaymentService {
 
     }
 
-    private boolean isValidCountry(String country) {
+    protected boolean isValidCountry(String country) {
         if (country == null || country.isEmpty()) {
             return false;
         }
